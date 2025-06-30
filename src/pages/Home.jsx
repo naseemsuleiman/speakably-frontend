@@ -21,6 +21,22 @@ function Home() {
   const [lastLoginDate, setLastLoginDate] = useState(null);
   const navigate = useNavigate();
 
+const showTodayReminderNotification = (notifications) => {
+  const today = new Date().toISOString().split('T')[0];
+
+  const todayReminder = notifications.find(n => {
+    const dateOnly = new Date(n.created_at).toISOString().split('T')[0];
+    return n.notification_type === 'reminder' && dateOnly === today;
+  });
+
+  if (todayReminder) {
+    toast.info(todayReminder.message || "Don't forget your daily practice! 🧠");
+  }
+};
+
+
+
+
   const checkNewDay = () => {
   const today = new Date().toISOString().split('T')[0]; // safer than toDateString
   const lastSeen = localStorage.getItem('lastSeenDate');
@@ -42,36 +58,39 @@ function Home() {
   };
 
   const refreshData = async () => {
-    try {
-      setLoading(true);
-      const profileResponse = await API.get('profiles/me/');
-      setUserData(profileResponse.data);
+  try {
+    setLoading(true);
+    const profileResponse = await API.get('profiles/me/');
+    setUserData(profileResponse.data);
 
-      
+    const unitsResponse = await API.get('units/', {
+      params: {
+        include_lessons: true,
+        proficiency: profileResponse.data.proficiency_level,
+        language: profileResponse.data.selected_language
+      }
+    });
 
-      const unitsResponse = await API.get('units/', {
-        params: {
-          include_lessons: true,
-          proficiency: profileResponse.data.proficiency_level,
-          language: profileResponse.data.selected_language
-        }
-      });
+    setUnits(unitsResponse.data || []);
 
-      setUnits(unitsResponse.data || []);
+    const notificationsResponse = await API.get('notifications/');
+    setNotifications(notificationsResponse.data);
 
-      const notificationsResponse = await API.get('notifications/');
-      setNotifications(notificationsResponse.data);
+    // ✅ Must be inside this try block
+    showTodayReminderNotification(notificationsResponse.data);
 
-    } catch (error) {
-      console.error('Refresh error:', error);
-      toast.error('Failed to refresh data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error('Refresh error:', error);
+    toast.error('Failed to refresh data');
+    
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const refreshData = async () => {
       try {
         setLoading(true);
         const profileResponse = await API.get('profiles/me/');
@@ -93,6 +112,8 @@ function Home() {
 
       } catch (error) {
         console.error('Error fetching data:', error);
+        console.log("Fetched notifications:", notificationsResponse.data);
+
         if (error.response?.status === 401) {
           navigate('/login');
         } else {
@@ -103,7 +124,7 @@ function Home() {
       }
     };
 
-    fetchUserData();
+    refreshData();
     
     const interval = setInterval(checkNewDay, 3600000);
     return () => clearInterval(interval);
@@ -117,6 +138,15 @@ function Home() {
     });
     setShowLessonModal(true);
   };
+
+  const markAsRead = async (id) => {
+  try {
+    await API.patch(`notifications/${id}/`, { is_read: true });
+    refreshData();
+  } catch (err) {
+    console.error("Failed to mark notification as read", err);
+  }
+};
 
   const handleCompleteLesson = async (lessonId, earnedXp) => {
     try {
