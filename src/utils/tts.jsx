@@ -11,7 +11,7 @@ const SUPPORTED_LANGUAGES = {
   'zh-CN': { name: 'Chinese (China)', recognition: true, synthesis: true },
   'ja-JP': { name: 'Japanese', recognition: true, synthesis: true },
   'ko-KR': { name: 'Korean', recognition: true, synthesis: true },
-  'ar-SA': { name: 'Arabic (Saudi Arabia)', recognition: false, synthesis: true },
+  'ar': { name: 'Arabic (Saudi Arabia)', recognition: false, synthesis: true },
   'hi-IN': { name: 'Hindi', recognition: false, synthesis: true },
   
 };
