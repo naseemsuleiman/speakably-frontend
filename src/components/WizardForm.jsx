@@ -21,6 +21,7 @@ function WizardForm() {
     selectedLanguage: '',
     proficiencyLevel: '',
     learningGoal: '',
+    dailyGoalTarget: '5',
     dailyPracticeTime: '15',
     availableDays: []
   });
@@ -99,12 +100,13 @@ function WizardForm() {
         selected_language: formData.selectedLanguage,
         proficiency_level: formData.proficiencyLevel,
         learning_goal: formData.learningGoal,
+        daily_goal_target: formData.dailyGoalTarget,
         daily_practice_time: formData.dailyPracticeTime,
         available_days: formData.availableDays
       });
       navigate('/home');
     } catch (err) {
-      toast.error(err.response?.data || 'Error saving preferences');
+      toast.error(err.response?.data?.detail || err.response?.data?.error || 'Error saving preferences');
     } finally {
       setLoading(false);
     }
@@ -114,12 +116,12 @@ function WizardForm() {
     { id: 1, title: 'Language' },
     { id: 2, title: 'Proficiency' },
     { id: 3, title: 'Goals' },
-    { id: 4, title: 'Availability' },
+    { id: 4, title: 'Schedule' },
     { id: 5, title: 'Complete' }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f8f9fa] to-[#e2f3f8] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-white flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -129,7 +131,7 @@ function WizardForm() {
         {/* Progress Bar */}
         <div className="bg-gray-100 h-2">
           <div 
-            className="bg-[#F2B5D4] h-full transition-all duration-500" 
+            className="bg-pink-500 h-full transition-all duration-500" 
             style={{ width: `${(currentStep / steps.length) * 100}%` }}
           ></div>
         </div>
@@ -139,10 +141,10 @@ function WizardForm() {
           {steps.map(step => (
             <div key={step.id} className="flex flex-col items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center 
-                ${currentStep >= step.id ? 'bg-[#F2B5D4] text-white' : 'bg-gray-200 text-gray-600'}`}>
+                ${currentStep >= step.id ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 {currentStep > step.id ? <FiCheckCircle /> : step.id}
               </div>
-              <span className={`text-xs mt-1 ${currentStep === step.id ? 'font-semibold text-[#F2B5D4]' : 'text-gray-500'}`}>
+              <span className={`text-xs mt-1 ${currentStep === step.id ? 'font-semibold text-pink-500' : 'text-gray-500'}`}>
                 {step.title}
               </span>
             </div>
@@ -157,14 +159,14 @@ function WizardForm() {
               transition={{ duration: 0.3 }}
             >
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <FiGlobe className="text-[#F2B5D4]" />
+                <FiGlobe className="text-pink-500" />
                 Which language do you want to learn?
               </h3>
               <select 
                 name="selectedLanguage"
                 value={formData.selectedLanguage} 
                 onChange={handleChange} 
-                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F2B5D4]"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
               >
                 <option value="">Select a language</option>
                 {languages.map(lang => (
@@ -181,7 +183,7 @@ function WizardForm() {
               transition={{ duration: 0.3 }}
             >
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <FiBarChart2 className="text-[#F2B5D4]" />
+                <FiBarChart2 className="text-pink-500" />
                 What's your current proficiency level?
               </h3>
               <div className="space-y-3">
@@ -200,8 +202,8 @@ function WizardForm() {
                       htmlFor={level}
                       className={`w-full p-3 border rounded-lg cursor-pointer transition-all
                         ${formData.proficiencyLevel === level.toLowerCase() 
-                          ? 'border-[#F2B5D4] bg-[#F2B5D4]/10' 
-                          : 'border-gray-200 hover:border-[#F2B5D4]'}`}
+                          ? 'border-pink-500 bg-pink-50' 
+                          : 'border-gray-200 hover:border-pink-300'}`}
                     >
                       {level}
                     </label>
@@ -218,7 +220,7 @@ function WizardForm() {
               transition={{ duration: 0.3 }}
             >
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <FiTarget className="text-[#F2B5D4]" />
+                <FiTarget className="text-pink-500" />
                 What's your primary learning goal?
               </h3>
               <div className="space-y-3">
@@ -237,8 +239,8 @@ function WizardForm() {
                       htmlFor={goal}
                       className={`w-full p-3 border rounded-lg cursor-pointer transition-all
                         ${formData.learningGoal === goal 
-                          ? 'border-[#F2B5D4] bg-[#F2B5D4]/10' 
-                          : 'border-gray-200 hover:border-[#F2B5D4]'}`}
+                          ? 'border-pink-500 bg-pink-50' 
+                          : 'border-gray-200 hover:border-pink-300'}`}
                     >
                       {goal}
                     </label>
@@ -255,10 +257,33 @@ function WizardForm() {
               transition={{ duration: 0.3 }}
             >
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <FiClock className="text-[#F2B5D4]" />
-                How much time can you dedicate daily?
+                <FiTarget className="text-pink-500" />
+                Set your daily goal
               </h3>
-              <div className="mb-8">
+              <div className="mb-6">
+                <label className="block text-gray-700 mb-2">
+                  Daily lesson target: {formData.dailyGoalTarget}
+                </label>
+                <input
+                  type="range"
+                  name="dailyGoalTarget"
+                  min="1"
+                  max="15"
+                  value={formData.dailyGoalTarget}
+                  onChange={handleChange}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                />
+                <div className="flex justify-between mt-2 text-sm text-gray-500">
+                  <span>1 lesson</span>
+                  <span>15 lessons</span>
+                </div>
+              </div>
+
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <FiClock className="text-pink-500" />
+                Daily practice time
+              </h3>
+              <div className="mb-6">
                 <input
                   type="range"
                   name="dailyPracticeTime"
@@ -267,17 +292,17 @@ function WizardForm() {
                   step="5"
                   value={formData.dailyPracticeTime}
                   onChange={handleChange}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#F2B5D4]"
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
                 />
-                <div className="flex justify-between mt-2">
+                <div className="flex justify-between mt-2 text-sm text-gray-500">
                   <span>5 min</span>
-                  <span className="font-medium text-[#F2B5D4]">{formData.dailyPracticeTime} min</span>
+                  <span className="font-medium text-pink-500">{formData.dailyPracticeTime} min</span>
                   <span>120 min</span>
                 </div>
               </div>
 
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <FiCalendar className="text-[#F2B5D4]" />
+                <FiCalendar className="text-pink-500" />
                 Which days are you available?
               </h3>
               <div className="grid grid-cols-4 gap-2">
@@ -294,8 +319,8 @@ function WizardForm() {
                       htmlFor={day}
                       className={`block p-2 text-center rounded-lg cursor-pointer transition-all
                         ${formData.availableDays.includes(day)
-                          ? 'bg-[#F2B5D4] text-white'
-                          : 'bg-gray-100 hover:bg-[#F2B5D4]/20'}`}
+                          ? 'bg-pink-500 text-white'
+                          : 'bg-gray-100 hover:bg-pink-100'}`}
                     >
                       {day.slice(0, 3)}
                     </label>
@@ -312,8 +337,8 @@ function WizardForm() {
               transition={{ duration: 0.3 }}
               className="text-center"
             >
-              <div className="w-20 h-20 bg-[#F2B5D4]/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <FiCheckCircle className="text-[#F2B5D4] text-4xl" />
+              <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FiCheckCircle className="text-pink-500 text-4xl" />
               </div>
               <h3 className="text-2xl font-bold text-gray-800 mb-3">All set!</h3>
               <p className="text-gray-600 mb-8">
@@ -339,7 +364,7 @@ function WizardForm() {
                 onClick={nextStep}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
-                className="ml-auto bg-[#F2B5D4] hover:bg-[#e8a0c8] text-white font-medium py-2 px-6 rounded-lg shadow-sm transition-all flex items-center gap-2"
+                className="ml-auto bg-pink-500 hover:bg-pink-600 text-white font-medium py-2 px-6 rounded-lg shadow-sm transition-all flex items-center gap-2"
               >
                 Next <FiArrowRight />
               </motion.button>
@@ -349,7 +374,7 @@ function WizardForm() {
                 disabled={loading}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
-                className="ml-auto bg-gradient-to-r from-[#F2B5D4] to-[#a5d8ff] hover:from-[#e8a0c8] hover:to-[#8fc9ff] text-white font-medium py-3 px-8 rounded-lg shadow-md transition-all flex items-center gap-2"
+                className="ml-auto bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-medium py-3 px-8 rounded-lg shadow-md transition-all flex items-center gap-2"
               >
                 {loading ? 'Finalizing...' : 'Start Learning'} <FiArrowRight />
               </motion.button>

@@ -1,19 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiUser, FiLock, FiChevronRight } from 'react-icons/fi';
+import { FiUser, FiLock, FiChevronRight, FiArrowRight } from 'react-icons/fi';
 import API from '../utils/api';
-import { FaChartLine, FaLanguage, FaUserFriends } from 'react-icons/fa';
-
-
-const colors = {
-  primary: '#F2B5D4', // Soft pink
-  secondary: '#89CFF0', // Baby blue
-  accent: '#7C3AED',    // Purple for accents
-  lightBg: '#FDF2F8',   // Very light pink background
-  darkText: '#1F2937',  // Dark gray
-  lightText: '#6B7280'  // Light gray
-};
+import { FaLanguage, FaUserFriends, FaRegSmileBeam, FaChartLine } from 'react-icons/fa';
+import { GiConversation } from 'react-icons/gi';
+import { RiChatSmile2Line } from 'react-icons/ri';
+import axios from 'axios'; 
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -23,6 +16,14 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+
+  const colors = {
+    primary: '#EC4899', // Vibrant pink (matches landing page)
+    secondary: '#7C3AED', // Purple for accents
+    lightBg: '#FDF2F8', // Very light pink background
+    darkText: '#1F2937', // Dark gray
+    lightText: '#6B7280' // Light gray
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,100 +43,166 @@ const Login = () => {
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      setIsSubmitting(true);
-      try {
-        const response = await API.post('login/', {
-          username: formData.username,
-          password: formData.password
-        });
-        
-        localStorage.setItem('token', response.data.token);
-        
-        // Check if user is admin
-        if (response.data.is_staff) {
-          navigate('/admin');
-          return;
+  e.preventDefault();
+  setErrors({});
+  
+  if (!validateForm()) return;
+
+  setIsSubmitting(true);
+  
+  try {
+    // Use your API instance instead of axios directly
+    const response = await API.post('login/', {
+      username: formData.username.trim(),
+      password: formData.password
+    });
+
+    const { token, user_id, is_staff, profile } = response.data;
+    
+    // Store authentication data
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify({
+      id: user_id,
+      isStaff: is_staff,
+      username: formData.username.trim(),
+      profile: profile
+    }));
+
+    // Manually set the authorization header
+    API.defaults.headers.common['Authorization'] = `Token ${token}`;
+
+    // Redirect logic
+    if (is_staff) {
+      navigate('/admin');
+    } else if (!profile.selected_language) {
+      navigate('/onboarding', { state: { from: 'login' } });
+    } else {
+      navigate('/home', { 
+        replace: true,
+        state: { 
+          welcomeBack: true,
+          lastLogin: profile.last_login 
         }
-        
-        // Check if user has completed preferences
-        try {
-          const profileResponse = await API.get('profiles/me/');
-          if (profileResponse.data.selected_language) {
-            navigate('/home');
-          } else {
-            navigate('/wizard');
-          }
-        } catch (profileError) {
-          console.error('Error fetching profile:', profileError);
-          navigate('/wizard');
-        }
-      } catch (err) {
-        setErrors({ 
-          form: err.response?.data?.non_field_errors?.[0] || 
-               err.response?.data?.detail || 
-               'Invalid credentials' 
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
+      });
     }
-  };
+
+  } catch (err) {
+    console.error('Full error object:', err);
+    console.error('Error response data:', err.response?.data);
+    console.error('Error status:', err.response?.status);
+    
+    let errorMessage = 'Login failed. Please check your credentials.';
+    
+    if (err.response) {
+      if (err.response.status === 400) {
+        errorMessage = 'Invalid request format';
+      } else if (err.response.status === 401) {
+        errorMessage = 'Invalid username or password';
+      } else if (err.response.data) {
+        errorMessage = err.response.data.detail || 
+                      err.response.data.non_field_errors?.[0] || 
+                      'Login failed';
+      }
+    } else if (err.request) {
+      errorMessage = 'No response from server. Check your connection.';
+    } else {
+      errorMessage = 'Request error: ' + err.message;
+    }
+    
+    setErrors({ form: errorMessage });
+    
+    // Clear authentication data on error
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    delete API.defaults.headers.common['Authorization'];
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
   const features = [
-    { icon: <FaLanguage className="text-xl" />, text: 'Learn 50+ languages' },
-    { icon: <FaUserFriends className="text-xl" />, text: 'Join a community' },
-    { icon: <FaChartLine className="text-xl" />, text: 'Track your progress' }
+    { 
+      icon: <GiConversation size={24} className="text-pink-600" />, 
+      text: 'Real conversation practice' 
+    },
+    { 
+      icon: <FaChartLine size={24} className="text-pink-600" />, 
+      text: 'Track your progress' 
+    },
+    { 
+      icon: <FaUserFriends size={24} className="text-pink-600" />, 
+      text: 'Join our community' 
+    }
   ];
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-gradient-to-b from-pink-50 to-white">
       {/* Left side - Illustration/Info */}
-      <div 
-        className="hidden md:flex flex-col justify-center p-12 w-1/2"
-        style={{ backgroundColor: colors.lightBg }}
-      >
+      <div className="hidden md:flex flex-col justify-center p-12 w-1/2 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-pink-200 opacity-20 blur-xl"></div>
+        <div className="absolute bottom-1/4 right-20 w-48 h-48 rounded-full bg-purple-200 opacity-20 blur-xl"></div>
+        
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
+          className="relative z-10"
         >
-          <h1 className="text-4xl font-bold mb-6" style={{ color: colors.primary }}>
-            Welcome Back!
-          </h1>
-          <p className="text-lg mb-8" style={{ color: colors.darkText }}>
-            Continue your language learning journey with us.
-          </p>
+          <div className="mb-12">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-pink-100 rounded-full">
+                <RiChatSmile2Line className="text-pink-600 text-xl" />
+              </div>
+              <span className="text-sm font-semibold text-pink-600 uppercase tracking-wider">
+                Welcome Back
+              </span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
+              Continue Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-pink-400">Language Journey</span>
+            </h1>
+            <p className="text-xl text-gray-700 mb-8">
+              Pick up right where you left off and keep improving your skills
+            </p>
+          </div>
           
-          <div className="space-y-4 mb-12">
+          <div className="space-y-6 mb-12">
             {features.map((feature, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <div 
-                  className="p-2 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: colors.primary, color: 'white' }}
-                >
+              <motion.div 
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 + 0.3 }}
+                className="flex items-center gap-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100"
+              >
+                <div className="p-3 bg-pink-100 rounded-lg text-pink-600">
                   {feature.icon}
                 </div>
-                <span style={{ color: colors.darkText }}>{feature.text}</span>
-              </div>
+                <span className="text-lg font-medium text-gray-700">{feature.text}</span>
+              </motion.div>
             ))}
           </div>
           
-          <div className="flex items-center gap-2">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="flex items-center gap-4"
+          >
             <div className="flex -space-x-2">
               {[1, 2, 3].map((item) => (
                 <div 
                   key={item} 
-                  className="w-10 h-10 rounded-full border-2 border-white"
+                  className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                   style={{ 
-                    backgroundColor: [colors.primary, colors.secondary, '#A78BFA'][item-1],
+                    backgroundColor: ['#F472B6', '#A78BFA', '#818CF8'][item-1],
                     zIndex: 4-item
                   }}
                 ></div>
               ))}
             </div>
-            <span style={{ color: colors.lightText }}>Join our community of learners</span>
-          </div>
+            <span className="text-gray-600">Join 10M+ language learners worldwide</span>
+          </motion.div>
         </motion.div>
       </div>
 
@@ -148,9 +215,19 @@ const Login = () => {
           className="w-full max-w-md"
         >
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-2" style={{ color: colors.primary }}>Login</h2>
-            <p style={{ color: colors.lightText }}>Continue your language journey</p>
+            <h2 className="text-3xl font-bold mb-2 text-gray-900">Login to Speakably</h2>
+            <p className="text-gray-600">Continue your language learning journey</p>
           </div>
+
+          {errors.form && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg border border-red-100"
+            >
+              {errors.form}
+            </motion.div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-5">
             {[
@@ -158,14 +235,11 @@ const Login = () => {
               { name: 'password', label: 'Password', icon: <FiLock />, type: 'password' }
             ].map((field) => (
               <div key={field.name}>
-                <label className="block mb-1 font-medium" style={{ color: colors.darkText }}>
+                <label className="block mb-2 font-medium text-gray-700">
                   {field.label}
                 </label>
                 <div className="relative">
-                  <div 
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2"
-                    style={{ color: colors.lightText }}
-                  >
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                     {field.icon}
                   </div>
                   <input
@@ -174,12 +248,15 @@ const Login = () => {
                     value={formData[field.name]}
                     onChange={handleChange}
                     placeholder={`Enter your ${field.label.toLowerCase()}`}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${errors[field.name] ? 'border-red-500 focus:ring-red-200' : `border-gray-300 focus:ring-[${colors.primary}]/50`}`}
-                    style={{ color: colors.darkText }}
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                      errors[field.name] 
+                        ? 'border-red-500 focus:ring-red-200' 
+                        : 'border-gray-300 focus:ring-pink-200'
+                    }`}
                   />
                 </div>
                 {errors[field.name] && (
-                  <p className="text-red-500 text-sm mt-1">{errors[field.name]}</p>
+                  <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                 )}
               </div>
             ))}
@@ -187,8 +264,7 @@ const Login = () => {
             <div className="flex justify-end">
               <button 
                 type="button" 
-                className="text-sm hover:underline focus:outline-none"
-                style={{ color: colors.secondary }}
+                className="text-sm font-medium text-pink-600 hover:underline focus:outline-none"
               >
                 Forgot password?
               </button>
@@ -199,76 +275,28 @@ const Login = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={isSubmitting}
-              className="w-full py-3 px-6 rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2"
-              style={{ 
-                backgroundColor: colors.primary,
-                color: 'white',
-                opacity: isSubmitting ? 0.7 : 1
-              }}
+              className="w-full py-3 px-6 rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-600 to-pink-500 text-white hover:from-pink-700 hover:to-pink-600"
             >
               {isSubmitting ? (
                 'Logging in...'
               ) : (
                 <>
-                  Login <FiChevronRight />
+                  Continue <FiArrowRight />
                 </>
               )}
             </motion.button>
           </form>
 
           <div className="mt-8 text-center">
-            <p style={{ color: colors.lightText }}>
+            <p className="text-gray-600">
               Don't have an account?{' '}
               <button 
                 onClick={() => navigate('/signup')} 
-                className="font-semibold hover:underline focus:outline-none"
-                style={{ color: colors.secondary }}
+                className="font-semibold text-pink-600 hover:underline focus:outline-none"
               >
-                Sign up
+                Sign up now
               </button>
             </p>
-          </div>
-
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t" style={{ borderColor: colors.lightText }}></div>
-              </div>
-              <div className="relative flex justify-center">
-                <span 
-                  className="px-2 text-sm"
-                  style={{ backgroundColor: 'white', color: colors.lightText }}
-                >
-                  Or login with
-                </span>
-              </div>
-            </div>
-            
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              {['Google', 'Facebook'].map((provider) => (
-                <button
-                  key={provider}
-                  type="button"
-                  className="w-full py-2 px-4 border rounded-lg font-medium flex items-center justify-center gap-2"
-                  style={{ 
-                    borderColor: colors.lightText,
-                    color: colors.darkText
-                  }}
-                >
-                  <div 
-                    className="w-6 h-6 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: provider === 'Google' ? '#4285F4' : '#1877F2' }}
-                  >
-                    {provider === 'Google' ? (
-                      <span className="text-white text-xs">G</span>
-                    ) : (
-                      <span className="text-white text-xs">f</span>
-                    )}
-                  </div>
-                  {provider}
-                </button>
-              ))}
-            </div>
           </div>
         </motion.div>
       </div>

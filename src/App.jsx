@@ -6,6 +6,11 @@ import Signup from './pages/Signup';
 import WizardForm from './components/WizardForm';
 import Home from './pages/Home';
 import AdminDashboard from './pages/AdminDashboard';
+import UnitCreationPage from './pages/UnitCreationPage';
+import LanguageForm from './pages/LanguageForm';
+import Profile from './pages/Profile';
+import VoiceTester from './pages/VoicePreview';
+import VoicePreview from './pages/VoicePreview';
 
 function App() {
   return (
@@ -17,6 +22,13 @@ function App() {
         <Route path="/wizard" element={<WizardForm />} />
         <Route path="/home" element={<Home />} />
         <Route path="/admin" element={<AdminDashboard />} />
+         <Route path="/admin/units/new" element={<UnitCreationPage />} />
+        <Route path="/admin/units/edit/:id" element={<UnitCreationPage />} />
+        <Route path="/admin/languages/new" element={<LanguageForm/>} />
+        <Route path="/admin/languages/edit/:id" element={<LanguageForm />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/voice" element={<VoicePreview />} />
+        
       </Routes>
     
   );
