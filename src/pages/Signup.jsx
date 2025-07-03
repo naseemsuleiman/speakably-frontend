@@ -40,7 +40,7 @@ const Signup = () => {
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     else if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = 'Email is invalid';
     if (!formData.password) newErrors.password = 'Password is required';
-    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+    else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     
     setErrors(newErrors);
@@ -50,13 +50,16 @@ const Signup = () => {
 const handleSignup = async (e) => {
   e.preventDefault();
   setErrors({});
-  
+
   if (!validateForm()) return;
 
   setIsSubmitting(true);
-  
+
   try {
-    // Use your API instance instead of axios directly
+    // Clear old token just in case
+    delete API.defaults.headers.common['Authorization'];
+    localStorage.removeItem('token');
+
     const response = await API.post('register/', {
       username: formData.username.trim(),
       email: formData.email.trim(),
@@ -64,21 +67,24 @@ const handleSignup = async (e) => {
     });
 
     console.log('Full registration response:', response);
-    
+
     if (!response.data.token) {
       throw new Error('No authentication token received');
     }
 
-    // Store token and update API defaults
+    // Save token and set Authorization header
     localStorage.setItem('token', response.data.token);
     API.defaults.headers.common['Authorization'] = `Token ${response.data.token}`;
+
+    // ⏱ Micro delay to ensure localStorage + headers are set
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     // Redirect logic
     if (response.data.user?.is_staff) {
       navigate('/admin');
     } else {
-      navigate('/wizard', { 
-        state: { 
+      navigate('/wizard', {
+        state: {
           newUser: true,
           username: formData.username.trim()
         }
@@ -92,31 +98,30 @@ const handleSignup = async (e) => {
       request: err.request
     });
 
-    let errorMessage = 'Registration failed. Please try again.';
-    
-    if (err.response?.data) {
-      if (err.response.data.username) {
-        errorMessage = `Username: ${err.response.data.username.join(' ')}`;
-      } else if (err.response.data.email) {
-        errorMessage = `Email: ${err.response.data.email.join(' ')}`;
-      } else if (err.response.data.password) {
-        errorMessage = `Password: ${err.response.data.password.join(' ')}`;
-      } else if (err.response.data.non_field_errors) {
-        errorMessage = err.response.data.non_field_errors.join(' ');
-      }
-    } else {
-      errorMessage = err.message || errorMessage;
-    }
+    const data = err.response?.data || {};
+    const newErrors = {};
 
-    setErrors({ form: errorMessage });
-    
+    if (data.username) newErrors.username = data.username.join(' ');
+    if (data.email) newErrors.email = data.email.join(' ');
+    if (data.password) newErrors.password = data.password.join(' ');
+    if (data.non_field_errors) newErrors.form = data.non_field_errors[0];
+    else if (data.detail) newErrors.form = data.detail;
+    else newErrors.form = 'Registration failed. Please try again.';
+
+    setErrors(newErrors);
+
     // Clear any partial authentication data
     localStorage.removeItem('token');
     delete API.defaults.headers.common['Authorization'];
+
   } finally {
     setIsSubmitting(false);
   }
 };
+
+
+    
+  
 
   const features = [
     { icon: <FaLanguage className="text-xl" />, text: 'Learn 50+ languages' },

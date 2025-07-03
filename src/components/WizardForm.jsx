@@ -23,7 +23,9 @@ function WizardForm() {
     learningGoal: '',
     dailyGoalTarget: '5',
     dailyPracticeTime: '15',
-    availableDays: []
+    availableDays: [],
+    enableEmailReminders: true,
+  reminderTime: '18:00',
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -330,23 +332,7 @@ function WizardForm() {
             </motion.div>
           )}
 
-          {currentStep === 5 && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="text-center"
-            >
-              <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <FiCheckCircle className="text-pink-500 text-4xl" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-3">All set!</h3>
-              <p className="text-gray-600 mb-8">
-                Your personalized learning plan is ready. Let's start your language journey!
-              </p>
-            </motion.div>
-          )}
-
+         
           <div className="flex justify-between mt-8">
             {currentStep > 1 && (
               <motion.button

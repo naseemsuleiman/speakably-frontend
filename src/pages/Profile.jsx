@@ -7,6 +7,7 @@ import {
 import API from '../utils/api';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
+import LanguageSelector from './LanguageSelector';
 
 function Profile() {
   const [userData, setUserData] = useState({
@@ -172,6 +173,23 @@ function Profile() {
 
         {/* Actions */}
         <div className="space-y-3">
+          
+  <motion.button
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={() => navigate('/settings')}
+    className="w-full flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-200"
+  >
+    <div className="p-2 bg-gray-100 rounded-full mr-3">
+      <FiSettings className="text-gray-600" />
+    </div>
+    <span className="font-medium">Notification Settings</span>
+  </motion.button>
+
+  {/* Language Selector */}
+  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+    <LanguageSelector />
+  </div>
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

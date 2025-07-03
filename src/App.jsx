@@ -11,6 +11,9 @@ import LanguageForm from './pages/LanguageForm';
 import Profile from './pages/Profile';
 import VoiceTester from './pages/VoicePreview';
 import VoicePreview from './pages/VoicePreview';
+import Leaderboard from './pages/Leaderboard';
+import CommunityTab from './pages/CommunityTab';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -28,6 +31,10 @@ function App() {
         <Route path="/admin/languages/edit/:id" element={<LanguageForm />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/voice" element={<VoicePreview />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/community" element={<CommunityTab />} />
+        <Route path="/settings" element={<Settings />} />
+
         
       </Routes>
     

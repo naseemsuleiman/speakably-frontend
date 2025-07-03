@@ -9,6 +9,8 @@ import API from '../utils/api';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import LessonModal from '../pages/LessonModal';
+import CommunityTab from './CommunityTab';
+import Leaderboard from './Leaderboard';
 
 function Home() {
   const [userData, setUserData] = useState(null);
@@ -20,6 +22,9 @@ function Home() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastLoginDate, setLastLoginDate] = useState(null);
   const navigate = useNavigate();
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+
+  const [activeTab, setActiveTab] = useState('learn');
 
 const showTodayReminderNotification = (notifications) => {
   const today = new Date().toISOString().split('T')[0];
@@ -56,6 +61,20 @@ const showTodayReminderNotification = (notifications) => {
       console.error('Error resetting daily progress:', error);
     }
   };
+  const handleSwitchLanguage = async (languageId) => {
+  try {
+    await API.patch('profiles/update-selected-language/', {
+      selected_language_id: languageId,
+    });
+    toast.success('Language switched!');
+    setShowLanguageDropdown(false);
+    refreshData(); // This must be defined above to reload UI
+  } catch (error) {
+    toast.error('Failed to switch language');
+    console.error('Switch language error:', error);
+  }
+};
+
 
   const refreshData = async () => {
   try {
@@ -149,52 +168,54 @@ const showTodayReminderNotification = (notifications) => {
 };
 
   const handleCompleteLesson = async (lessonId, earnedXp) => {
-    try {
-      const response = await API.post(`lessons/${lessonId}/complete/`, {
-        xp_earned: Math.round(Number(earnedXp)) || 10
-      });
+  try {
+    const response = await API.post(`lessons/${lessonId}/complete/`, {
+      xp_earned: Math.round(Number(earnedXp)) || 10
+    });
 
-      if (response.data.status === 'success') {
-        const [profileResponse, unitsResponse] = await Promise.all([
-          API.get('profiles/me/'),
-          API.get('units/', {
-            params: {
-              include_lessons: true,
-              proficiency: userData.proficiency_level,
-              language: userData.selected_language
-            }
-          })
-        ]);
-
-        setUserData(profileResponse.data);
-        setUnits(unitsResponse.data || []);
-
-        toast.success(
-          <div>
-            <div className="font-bold">+{earnedXp} XP Earned!</div>
-            <div>Daily Progress: {profileResponse.data.daily_goal_completed}/{profileResponse.data.daily_goal_target}</div>
-          </div>,
-          { autoClose: 3000 }
-        );
-        
-        return true;
-      }
-      
-      toast.error(response.data.error || 'Lesson completion failed');
-      return false;
-      
-    } catch (error) {
-      console.error('Complete lesson error:', error);
-      toast.error(
-        <div>
-          <div className="font-bold">Error completing lesson</div>
-          <div>{error.response?.data?.error || 'Failed to complete lesson'}</div>
-        </div>,
-        { autoClose: 5000 }
+    if (response.data.status === 'success') {
+      // Update local state immediately
+      setUnits(prevUnits => 
+        prevUnits.map(unit => ({
+          ...unit,
+          lessons: unit.lessons?.map(lesson => 
+            lesson.id === lessonId 
+              ? { ...lesson, is_completed: true }
+              : lesson
+          )
+        }))
       );
-      return false;
+      
+      // Refresh user data
+      const profileResponse = await API.get('profiles/me/');
+      setUserData(profileResponse.data);
+
+      toast.success(
+        <div>
+          <div className="font-bold">+{earnedXp} XP Earned!</div>
+          <div>Daily Progress: {profileResponse.data.daily_goal_completed}/{profileResponse.data.daily_goal_target}</div>
+        </div>,
+        { autoClose: 3000 }
+      );
+      
+      return true;
     }
-  };
+    
+    toast.error(response.data.error || 'Lesson completion failed');
+    return false;
+    
+  } catch (error) {
+    console.error('Complete lesson error:', error);
+    toast.error(
+      <div>
+        <div className="font-bold">Error completing lesson</div>
+        <div>{error.response?.data?.error || 'Failed to complete lesson'}</div>
+      </div>,
+      { autoClose: 5000 }
+    );
+    return false;
+  }
+};
 
   if (loading) {
     return (
@@ -244,7 +265,30 @@ const showTodayReminderNotification = (notifications) => {
           </div>
           <div className="flex flex-col">
             <span className="text-xs text-gray-500">Learning</span>
-            <span className="font-bold text-pink-700">{userData.selected_language_name}</span>
+            <div className="relative">
+  <button
+    className="font-bold text-pink-700 hover:underline"
+    onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+  >
+    {userData.selected_language_name} ⌄
+  </button>
+  {showLanguageDropdown && userData.learning_languages?.length > 1 && (
+    <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+      {userData.learning_languages.map((lang) => (
+        <button
+          key={lang.id}
+          onClick={() => handleSwitchLanguage(lang.id)}
+          className={`block w-full text-left px-4 py-2 hover:bg-pink-100 text-sm ${
+            lang.id === userData.selected_language ? 'font-bold text-pink-600' : 'text-gray-700'
+          }`}
+        >
+          {lang.name}
+        </button>
+      ))}
+    </div>
+  )}
+</div>
+
           </div>
         </div>
         
@@ -335,6 +379,29 @@ const showTodayReminderNotification = (notifications) => {
             <span>{userData.daily_goal_progress || 0}% complete</span>
           </div>
         </motion.div>
+
+        {/* // Add after the daily goal component */}
+{userData?.canLevelUp && (
+  <motion.div 
+    initial={{ scale: 0.9 }}
+    animate={{ scale: 1 }}
+    className="w-full mt-4 p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg"
+  >
+    <div className="flex items-center">
+      <FiAward className="text-2xl mr-3" />
+      <div>
+        <h3 className="font-bold">Ready to level up!</h3>
+        <p>You've mastered enough content to advance to {userData.nextProficiencyLevel}.</p>
+      </div>
+      <button 
+        onClick={handleLevelUp}
+        className="ml-auto bg-white text-blue-600 px-4 py-2 rounded-lg font-medium"
+      >
+        Level Up
+      </button>
+    </div>
+  </motion.div>
+)}
 
         {/* Learning Path */}
         <div className="w-full mt-6">
@@ -456,30 +523,71 @@ const showTodayReminderNotification = (notifications) => {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-3 px-4 max-w-4xl mx-auto rounded-t-xl shadow-lg">
-        <button className="flex flex-col items-center text-pink-600 relative">
-          <div className="p-2 bg-pink-100 rounded-full">
-            <FiBook className="text-xl" />
-          </div>
-          <span className="text-xs mt-1 font-medium">Learn</span>
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-pink-500 rounded-full"></div>
-        </button>
-        <button className="flex flex-col items-center text-gray-500 hover:text-pink-500 transition">
-          <div className="p-2 bg-gray-100 rounded-full hover:bg-pink-100">
-            <FiAward className="text-xl" />
-          </div>
-          <span className="text-xs mt-1 font-medium">Leaderboard</span>
-        </button>
-        <button 
-          className="flex flex-col items-center text-gray-500 hover:text-pink-500 transition"
-          onClick={() => navigate('/profile')}
-        >
-          <div className="p-2 bg-gray-100 rounded-full hover:bg-pink-100">
-            <FiUser className="text-xl" />
-          </div>
-          <span className="text-xs mt-1 font-medium">Profile</span>
-        </button>
-      </div>
+      
+
+
+
+<div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-3 px-4 max-w-4xl mx-auto rounded-t-xl shadow-lg">
+  <button 
+    onClick={() => navigate('/home')}
+    className={`flex flex-col items-center ${location.pathname === '/home' ? 'text-pink-600' : 'text-gray-500'}`}
+  >
+    <div className={`p-2 rounded-full ${location.pathname === '/home' ? 'bg-pink-100' : 'bg-gray-100'}`}>
+      <FiBook className="text-xl" />
+    </div>
+    <span className="text-xs mt-1 font-medium">Learn</span>
+  </button>
+  
+  <button 
+    onClick={() => navigate('/community')}
+    className={`flex flex-col items-center ${location.pathname === '/community' ? 'text-pink-600' : 'text-gray-500'}`}
+  >
+    <div className={`p-2 rounded-full ${location.pathname === '/community' ? 'bg-pink-100' : 'bg-gray-100'}`}>
+      <FiUser className="text-xl" />
+    </div>
+    <span className="text-xs mt-1 font-medium">Community</span>
+  </button>
+  
+  <button 
+    onClick={() => navigate('/leaderboard')}
+    className={`flex flex-col items-center ${location.pathname === '/leaderboard' ? 'text-pink-600' : 'text-gray-500'}`}
+  >
+    <div className={`p-2 rounded-full ${location.pathname === '/leaderboard' ? 'bg-pink-100' : 'bg-gray-100'}`}>
+      <FiAward className="text-xl" />
+    </div>
+    <span className="text-xs mt-1 font-medium">Leaderboard</span>
+  </button>
+  
+  <button 
+    onClick={() => navigate('/profile')}
+    className={`flex flex-col items-center ${location.pathname === '/profile' ? 'text-pink-600' : 'text-gray-500'}`}
+  >
+    <div className={`p-2 rounded-full ${location.pathname === '/profile' ? 'bg-pink-100' : 'bg-gray-100'}`}>
+      <FiUser className="text-xl" />
+    </div>
+    <span className="text-xs mt-1 font-medium">Profile</span>
+  </button>
+</div>
+
+
+{activeTab === 'learn' && (
+  <div className="w-full max-w-4xl px-4 flex flex-col items-center pb-20">
+    {/* Your existing learn content */}
+  </div>
+)}
+
+{activeTab === 'community' && (
+  <div className="w-full pb-20">
+    <CommunityTab />
+  </div>
+)}
+
+{activeTab === 'leaderboard' && (
+  <div className="w-full pb-20">
+    <Leaderboard user={userData} />
+  </div>
+)}
+
 
       {/* Lesson Modal */}
       {showLessonModal && selectedLesson && (

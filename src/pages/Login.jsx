@@ -42,24 +42,27 @@ const Login = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = async (e) => {
+ const handleLogin = async (e) => {
   e.preventDefault();
   setErrors({});
-  
-  if (!validateForm()) return;
 
+  if (!validateForm()) return;
   setIsSubmitting(true);
-  
+
   try {
-    // Use your API instance instead of axios directly
+    // 🔒 Clear any old token before login
+    delete API.defaults.headers.common['Authorization'];
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
     const response = await API.post('login/', {
       username: formData.username.trim(),
       password: formData.password
     });
 
     const { token, user_id, is_staff, profile } = response.data;
-    
-    // Store authentication data
+
+    // 💾 Save auth data
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify({
       id: user_id,
@@ -68,20 +71,23 @@ const Login = () => {
       profile: profile
     }));
 
-    // Manually set the authorization header
+    // ✅ Manually set token for API instance
     API.defaults.headers.common['Authorization'] = `Token ${token}`;
 
-    // Redirect logic
+    // ⏱️ Micro delay to ensure headers and storage are set
+    await new Promise(res => setTimeout(res, 0));
+
+    // 🚀 Redirect based on role/profile
     if (is_staff) {
       navigate('/admin');
     } else if (!profile.selected_language) {
       navigate('/onboarding', { state: { from: 'login' } });
     } else {
-      navigate('/home', { 
+      navigate('/home', {
         replace: true,
-        state: { 
+        state: {
           welcomeBack: true,
-          lastLogin: profile.last_login 
+          lastLogin: profile.last_login
         }
       });
     }
@@ -90,28 +96,19 @@ const Login = () => {
     console.error('Full error object:', err);
     console.error('Error response data:', err.response?.data);
     console.error('Error status:', err.response?.status);
-    
-    let errorMessage = 'Login failed. Please check your credentials.';
-    
-    if (err.response) {
-      if (err.response.status === 400) {
-        errorMessage = 'Invalid request format';
-      } else if (err.response.status === 401) {
-        errorMessage = 'Invalid username or password';
-      } else if (err.response.data) {
-        errorMessage = err.response.data.detail || 
-                      err.response.data.non_field_errors?.[0] || 
-                      'Login failed';
-      }
-    } else if (err.request) {
-      errorMessage = 'No response from server. Check your connection.';
-    } else {
-      errorMessage = 'Request error: ' + err.message;
-    }
-    
-    setErrors({ form: errorMessage });
-    
-    // Clear authentication data on error
+
+    const data = err.response?.data || {};
+    const newErrors = {};
+
+    if (data.username) newErrors.username = data.username.join(' ');
+    if (data.password) newErrors.password = data.password.join(' ');
+    if (data.non_field_errors) newErrors.form = data.non_field_errors[0];
+    else if (data.detail) newErrors.form = data.detail;
+    else newErrors.form = 'Login failed. Please try again.';
+
+    setErrors(newErrors);
+
+    // 🚫 Clear any partial auth data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     delete API.defaults.headers.common['Authorization'];
@@ -119,6 +116,7 @@ const Login = () => {
     setIsSubmitting(false);
   }
 };
+
 
   const features = [
     { 
